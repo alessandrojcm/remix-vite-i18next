@@ -5,6 +5,8 @@ import { startTransition, StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { I18nextProvider, initReactI18next } from "react-i18next";
 import { getInitialNamespaces } from "remix-i18next/client";
+import Backend from "i18next-http-backend";
+
 import * as i18n from "~/config/i18n";
 
 async function main() {
@@ -12,9 +14,14 @@ async function main() {
   await i18next
     .use(initReactI18next) // Tell i18next to use the react-i18next plugin
     .use(I18nextBrowserLanguageDetector) // Setup a client-side language detector
+    .use(Backend)
     .init({
       ...i18n,
+      debug: true,
       ns: getInitialNamespaces(),
+      backend: {
+        loadPath: "/locales/{{lng}}.json",
+      },
       detection: {
         // Here only enable htmlTag detection, we'll detect the language only
         // server-side with remix-i18next, by using the `<html lang>` attribute
@@ -33,7 +40,7 @@ async function main() {
         <StrictMode>
           <RemixBrowser />
         </StrictMode>
-      </I18nextProvider>,
+      </I18nextProvider>
     );
   });
 }

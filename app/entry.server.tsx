@@ -8,7 +8,11 @@ import { renderToPipeableStream } from "react-dom/server";
 import { createInstance } from "i18next";
 import i18nServer from "./modules/i18n.server";
 import { I18nextProvider, initReactI18next } from "react-i18next";
+import Backend from "i18next-fs-backend";
+
 import * as i18n from "./config/i18n";
+import path from "node:path";
+import * as process from "node:process";
 
 const ABORT_DELAY = 5_000;
 
@@ -20,20 +24,20 @@ export default function handleRequest(
   // This is ignored so we can keep it in the template for visibility.  Feel
   // free to delete this parameter in your app if you're not using it!
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  loadContext: AppLoadContext,
+  loadContext: AppLoadContext
 ) {
   return isbot(request.headers.get("user-agent") || "")
     ? handleBotRequest(
         request,
         responseStatusCode,
         responseHeaders,
-        remixContext,
+        remixContext
       )
     : handleBrowserRequest(
         request,
         responseStatusCode,
         responseHeaders,
-        remixContext,
+        remixContext
       );
 }
 
@@ -41,17 +45,34 @@ async function handleBotRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
+  remixContext: EntryContext
 ) {
   const instance = createInstance();
   const lng = await i18nServer.getLocale(request);
   const ns = i18nServer.getRouteNamespaces(remixContext);
 
-  await instance.use(initReactI18next).init({
-    ...i18n,
-    lng,
-    ns,
-  });
+  await instance
+    .use(initReactI18next)
+    .use(Backend)
+    .init({
+      ...i18n,
+      debug: true,
+      react: {
+        useSuspense: false,
+      },
+      lng,
+      ns,
+      backend: {
+        // Relative to the production file structure
+        loadPath: path.resolve(
+          `${
+            process.env.NODE_ENV === "production"
+              ? "./../client/assets"
+              : "public"
+          }/locales/{{lng}}.json`
+        ),
+      },
+    });
 
   return new Promise((resolve, reject) => {
     let shellRendered = false;
@@ -75,7 +96,7 @@ async function handleBotRequest(
             new Response(stream, {
               headers: responseHeaders,
               status: responseStatusCode,
-            }),
+            })
           );
 
           pipe(body);
@@ -92,7 +113,7 @@ async function handleBotRequest(
             console.error(error);
           }
         },
-      },
+      }
     );
 
     setTimeout(abort, ABORT_DELAY);
@@ -103,7 +124,7 @@ async function handleBrowserRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
+  remixContext: EntryContext
 ) {
   const instance = createInstance();
   const lng = await i18nServer.getLocale(request);
@@ -137,7 +158,7 @@ async function handleBrowserRequest(
             new Response(stream, {
               headers: responseHeaders,
               status: responseStatusCode,
-            }),
+            })
           );
 
           pipe(body);
@@ -154,7 +175,7 @@ async function handleBrowserRequest(
             console.error(error);
           }
         },
-      },
+      }
     );
 
     setTimeout(abort, ABORT_DELAY);
